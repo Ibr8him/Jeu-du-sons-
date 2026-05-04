@@ -31,12 +31,22 @@ const soundFiles = [
 const soundPaths = soundFiles.map((name) => `/Sons/${name}`)
 
 export default function App() {
+  // État audio (ancien système)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(-1)
   const [clickCount, setClickCount] = useState(0)
   const [autoPlay, setAutoPlay] = useState(false)
   const [intervalMs, setIntervalMs] = useState(3200)
   const [isPressed, setIsPressed] = useState(false)
+
+  // État du jeu (nouveau système)
+  const [score, setScore] = useState(0)
+  const [level, setLevel] = useState(1)
+  const [gameState, setGameState] = useState('idle') // idle, playing, guessing, answered
+  const [options, setOptions] = useState([])
+  const [selectedAnswer, setSelectedAnswer] = useState(null)
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [correctAnswer, setCorrectAnswer] = useState(-1)
 
   const audioRefs = useRef([])
   const pressTimeout = useRef(null)
@@ -75,6 +85,48 @@ export default function App() {
     [],
   )
 
+  // Générer les options de réponse selon le niveau
+  const generateOptions = useCallback(
+    (correctIndex) => {
+      const choicesCount = level === 1 ? 3 : level === 2 ? 5 : 8
+      const selectedIndices = new Set([correctIndex])
+      
+      while (selectedIndices.size < choicesCount) {
+        const randomIndex = Math.floor(Math.random() * soundPaths.length)
+        if (randomIndex !== correctIndex) {
+          selectedIndices.add(randomIndex)
+        }
+      }
+      
+      return Array.from(selectedIndices).sort(() => Math.random() - 0.5)
+    },
+    [level],
+  )
+
+  // Vérifier la réponse et mettre à jour le score
+  const handleAnswer = useCallback(
+    (selectedIndex) => {
+      const correct = selectedIndex === currentIndex
+      setSelectedAnswer(selectedIndex)
+      setIsCorrect(correct)
+      setGameState('answered')
+      
+      if (correct) {
+        const newScore = score + 10
+        setScore(newScore)
+        
+        // Augmenter le niveau tous les 50 points
+        const newLevel = Math.floor(newScore / 50) + 1
+        if (newLevel > level) {
+          setLevel(newLevel)
+        }
+      } else {
+        setScore(Math.max(0, score - 5))
+      }
+    },
+    [score, currentIndex, level],
+  )
+
   const playRandomSound = useCallback(
     ({ auto = false } = {}) => {
       if (!audioRefs.current.length) return
@@ -91,6 +143,10 @@ export default function App() {
         .then(() => {
           setIsPlaying(true)
           setCurrentIndex(nextIndex)
+          setGameState('playing')
+          setSelectedAnswer(null)
+          setIsCorrect(null)
+          
           if (!auto) {
             setClickCount((value) => value + 1)
           }
@@ -107,6 +163,16 @@ export default function App() {
     },
     [chooseNextIndex, currentIndex],
   )
+
+  // Quand le son se termine, afficher les options
+  useEffect(() => {
+    if (!isPlaying && currentIndex >= 0 && gameState === 'playing') {
+      const optionsList = generateOptions(currentIndex)
+      setOptions(optionsList)
+      setCorrectAnswer(currentIndex)
+      setGameState('guessing')
+    }
+  }, [isPlaying, currentIndex, gameState, generateOptions])
 
   useEffect(() => {
     if (!autoPlay) return undefined
@@ -336,6 +402,155 @@ export default function App() {
           }
         }
 
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+          padding-bottom: 16px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header-item {
+          text-align: center;
+        }
+
+        .header-item span {
+          display: block;
+          color: #9bb0dc;
+          font-size: 0.85rem;
+          margin-bottom: 4px;
+        }
+
+        .header-item strong {
+          display: block;
+          color: #7c5cff;
+          font-size: 1.5rem;
+          font-weight: 800;
+        }
+
+        .game-message {
+          text-align: center;
+          margin: 16px 0;
+          min-height: 28px;
+          font-weight: 600;
+          font-size: 1rem;
+          animation: messageSlide 300ms ease;
+        }
+
+        .game-message.correct {
+          color: #4ade80;
+        }
+
+        .game-message.incorrect {
+          color: #f87171;
+        }
+
+        .options-grid {
+          display: grid;
+          gap: 12px;
+          margin: 24px 0;
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        }
+
+        .option-button {
+          padding: 14px 16px;
+          border-radius: 14px;
+          border: 2px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.04);
+          color: #eef2ff;
+          font-size: 0.9rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 200ms ease;
+          overflow: hidden;
+          position: relative;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .option-button:hover:not(:disabled) {
+          border-color: rgba(124, 92, 255, 0.5);
+          background: rgba(124, 92, 255, 0.1);
+          transform: translateY(-2px);
+        }
+
+        .option-button:disabled {
+          cursor: not-allowed;
+          opacity: 0.7;
+        }
+
+        .option-button.correct {
+          border-color: #4ade80;
+          background: rgba(74, 222, 128, 0.15);
+          color: #4ade80;
+          animation: correctPulse 600ms ease;
+        }
+
+        .option-button.incorrect {
+          border-color: #f87171;
+          background: rgba(248, 113, 113, 0.15);
+          color: #f87171;
+          animation: incorrectShake 600ms ease;
+        }
+
+        .replay-button {
+          width: 100%;
+          padding: 12px 24px;
+          margin-top: 16px;
+          border-radius: 12px;
+          border: none;
+          background: linear-gradient(135deg, #7c5cff, #3b50ff);
+          color: white;
+          font-weight: 700;
+          font-size: 1rem;
+          cursor: pointer;
+          transition: all 200ms ease;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .replay-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 24px rgba(124, 92, 255, 0.3);
+        }
+
+        .replay-button:active {
+          transform: scale(0.95);
+        }
+
+        @keyframes messageSlide {
+          from {
+            opacity: 0;
+            transform: translateY(-8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes correctPulse {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.05);
+          }
+        }
+
+        @keyframes incorrectShake {
+          0%, 100% {
+            transform: translateX(0);
+          }
+          25% {
+            transform: translateX(-6px);
+          }
+          75% {
+            transform: translateX(6px);
+          }
+        }
+
         @media (max-width: 540px) {
           .card {
             padding: 24px;
@@ -353,21 +568,77 @@ export default function App() {
       `}</style>
 
       <div className="card">
-        <h1>Soundboard TikTok</h1>
-        <p className="subtitle">Clique sur le gros bouton pour jouer un son aléatoire, sans répéter le même deux fois de suite.</p>
+        <h1>🎮 Devine le son</h1>
+        
+        {/* En-tête avec score et niveau */}
+        <div className="header">
+          <div className="header-item">
+            <span>Score</span>
+            <strong>{score}</strong>
+          </div>
+          <div className="header-item">
+            <span>Niveau</span>
+            <strong>{level}</strong>
+          </div>
+          <div className="header-item">
+            <span>Choix à faire</span>
+            <strong>{level === 1 ? 3 : level === 2 ? 5 : 8}</strong>
+          </div>
+        </div>
 
+        <p className="subtitle">Écoute le son, puis clique sur la bonne réponse. +10 points si correct, -5 si incorrect.</p>
+
+        {/* Bouton de lecture */}
         <button
           className={`play-button ${isPressed ? 'pressed' : ''}`}
           type="button"
           onClick={() => playRandomSound()}
+          disabled={gameState === 'guessing' || gameState === 'answered'}
         >
           <span>{isPlaying ? 'Playing...' : 'Clique ici'}</span>
           <div className="pulse" />
         </button>
 
         <div className="status">
-          <strong>{isPlaying ? currentSoundLabel : 'Prêt à jouer'}</strong>
+          <strong>{isPlaying ? 'Écoute le son...' : 'Prêt à jouer'}</strong>
         </div>
+
+        {/* Message du jeu (Correct/Faux) */}
+        {isCorrect !== null && (
+          <div className={`game-message ${isCorrect ? 'correct' : 'incorrect'}`}>
+            {isCorrect ? '✅ Correct !' : '❌ Faux...'}
+          </div>
+        )}
+
+        {/* Afficher les options de réponse */}
+        {gameState === 'guessing' || gameState === 'answered' ? (
+          <>
+            <div className="options-grid">
+              {options.map((index) => (
+                <button
+                  key={index}
+                  className={`option-button ${
+                    selectedAnswer === index && isCorrect ? 'correct' : ''
+                  } ${selectedAnswer === index && isCorrect === false ? 'incorrect' : ''}`}
+                  onClick={() => handleAnswer(index)}
+                  disabled={selectedAnswer !== null}
+                >
+                  {soundFiles[index].replace(/\.mp3$/i, '').replace(/[-_]/g, ' ')}
+                </button>
+              ))}
+            </div>
+
+            {/* Bouton rejouer après avoir répondu */}
+            {gameState === 'answered' && (
+              <button className="replay-button" onClick={() => {
+                setGameState('idle')
+                playRandomSound()
+              }}>
+                Rejouer →
+              </button>
+            )}
+          </>
+        ) : null}
 
         <div className="meta">
           <div className="meta-item">
@@ -375,12 +646,12 @@ export default function App() {
             <strong>{clickCount}</strong>
           </div>
           <div className="meta-item">
-            <span>Son actuel</span>
-            <strong>{currentIndex >= 0 ? currentSoundLabel : 'Aucun son'}</strong>
+            <span>Prochain niveau à</span>
+            <strong>{Math.ceil((level * 50) / 10) * 10} pts</strong>
           </div>
           <div className="meta-item">
-            <span>Auto-play</span>
-            <strong>{autoPlay ? `Toutes les ${intervalMs / 1000}s` : 'Désactivé'}</strong>
+            <span>Progression</span>
+            <strong>{score % 50}/{50}</strong>
           </div>
           <div className="meta-item">
             <span>Nombre de pistes</span>
