@@ -20,6 +20,12 @@ const soundFiles = [
   'tu-touche-a-ma-sensibilite.mp3',
   'va-dormir-la.mp3',
   'vine-boom.mp3',
+  'une-souris-verte.mp3',
+  'pantalon-dauphin.mp3',
+  'y2mate_DO1kVeR.mp3',
+  'img_0181-online-audio-converter.mp3',
+  
+  
 ]
 
 const soundPaths = soundFiles.map((name) => `/Sons/${name}`)
