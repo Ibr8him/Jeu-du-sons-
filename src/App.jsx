@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 const soundFiles = [
-  '67_SQlv2Xv.mp3',
+  '67.mp3',
   'aller-ftg.mp3',
   'among-us-role-reveal-sound.mp3',
   'arretez-denvoyer-les-messages-les-gens-sont-en-train-de-dormir.mp3',
-  'ca-va-peter_nR3IwZJ.mp3',
-  'coucou-tu-veux-voir-ma-bite_0LuNrh3.mp3',
+  'ca-va-peter.mp3',
+  'coucou-tu-veux-voir-ma-bite.mp3',
   'dry-fart.mp3',
   'fahhhhhhhhhhhhhh.mp3',
   'fortnite-default-dance-bass-boosted.mp3',
@@ -22,7 +22,7 @@ const soundFiles = [
   'vine-boom.mp3',
   'une-souris-verte.mp3',
   'pantalon-dauphin.mp3',
-  'y2mate_DO1kVeR.mp3',
+  'oui-oui.mp3',
   'img_0181-online-audio-converter.mp3',
   
   
